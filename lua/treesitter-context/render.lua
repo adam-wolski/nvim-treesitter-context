@@ -491,11 +491,20 @@ function M.open(winid, ctx_ranges, ctx_lines, force_hl_update)
       'treesitter_context_line_number',
       'TreesitterContextLineNumber'
     )
-    if
-      api.nvim_win_is_valid(window_context.gutter_winid)
-      and (vim.wo[winid].number or vim.wo[winid].relativenumber)
-    then
-      render_lno(winid, api.nvim_win_get_buf(window_context.gutter_winid), ctx_ranges, gutter_width)
+    if api.nvim_win_is_valid(window_context.gutter_winid) then
+      local gutter_bufnr = api.nvim_win_get_buf(window_context.gutter_winid)
+      if vim.wo[winid].number or vim.wo[winid].relativenumber then
+        render_lno(winid, gutter_bufnr, ctx_ranges, gutter_width)
+      else
+        -- Buffer may be reused from the pool with stale content; blank it
+        -- so leftover text doesn't bleed into the gutter window.
+        local blanks = {}
+        for i = 1, win_height do
+          blanks[i] = ''
+        end
+        set_lines(gutter_bufnr, blanks)
+        api.nvim_buf_clear_namespace(gutter_bufnr, -1, 0, -1)
+      end
     end
   else
     close(window_context.gutter_winid)
